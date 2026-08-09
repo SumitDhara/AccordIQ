@@ -14,8 +14,7 @@ export default function useAnalyze() {
   const [file, setFile] =
     useState<File | null>(null);
 
-  const [text, setText] =
-    useState("");
+  const [text, setText] = useState("");
 
   const [loading, setLoading] =
     useState(false);
@@ -24,9 +23,7 @@ export default function useAnalyze() {
     useState<AnalyzeResponse | null>(null);
 
   const canAnalyze = useMemo(() => {
-
     switch (mode) {
-
       case "upload":
         return file !== null;
 
@@ -36,28 +33,17 @@ export default function useAnalyze() {
       default:
         return false;
     }
-
-  }, [
-    mode,
-    file,
-    text,
-  ]);
+  }, [mode, file, text]);
 
   function reset() {
-
     setFile(null);
-
     setText("");
-
     setLoading(false);
-
     setResult(null);
-
     setMode("upload");
   }
 
   return {
-
     mode,
     setMode,
 

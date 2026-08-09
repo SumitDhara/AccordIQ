@@ -1,14 +1,8 @@
 import axios from "axios";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-console.log("NEXT_PUBLIC_API_BASE_URL =", apiBaseUrl);
-
-if (!apiBaseUrl) {
-  console.warn(
-    "NEXT_PUBLIC_API_BASE_URL is not defined. Check apps/web/.env.local and restart the Next.js development server."
-  );
-}
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
 
 const apiClient = axios.create({
   baseURL: apiBaseUrl,
@@ -20,38 +14,40 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(
-      `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
-    );
+    if (
+      typeof window !== "undefined"
+    ) {
+      const token =
+        localStorage.getItem(
+          "accessToken"
+        );
 
-    // TODO: Attach JWT token here when authentication is implemented.
-    // const token = localStorage.getItem("accessToken");
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+      if (token) {
+        config.headers.Authorization =
+          `Bearer ${token}`;
+      }
+    }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) =>
+    Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(
-  (response) => {
-    console.log(
-      `[API Response] ${response.status} ${response.config.url}`
-    );
-
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response) {
-      console.error("[API Error]", {
-        status: error.response.status,
-        url: error.config?.url,
-        data: error.response.data,
-      });
-    } else {
-      console.error("[Network Error]", error.message);
+      console.error(
+        "[API Error]",
+        {
+          status:
+            error.response.status,
+          url: error.config?.url,
+          data:
+            error.response.data,
+        }
+      );
     }
 
     return Promise.reject(error);

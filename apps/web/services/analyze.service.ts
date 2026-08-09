@@ -31,15 +31,11 @@ interface UploadAnalysisResponse {
 }
 
 class AnalyzeService {
-
   async analyze(
     request: AnalyzeRequest
   ): Promise<AnalyzeResponse> {
-
     switch (request.type) {
-
       case "text": {
-
         const response = await axios.post(
           `${API}/analyze/text`,
           {
@@ -51,27 +47,20 @@ class AnalyzeService {
       }
 
       case "upload": {
-
         if (!request.file) {
-          throw new Error(
-            "Please choose a file."
-          );
+          throw new Error("Please choose a file.");
         }
 
         const formData = new FormData();
 
-        formData.append(
-          "file",
-          request.file
-        );
+        formData.append("file", request.file);
 
         const response = await axios.post(
           `${API}/documents/upload`,
           formData,
           {
             headers: {
-              "Content-Type":
-                "multipart/form-data",
+              "Content-Type": "multipart/form-data",
             },
           }
         );
@@ -80,29 +69,43 @@ class AnalyzeService {
           response.data.data;
 
         return {
-          summary:
-            data.analysis.summary,
+          summary: data.analysis.summary,
 
-          keyPoints:
-            data.analysis.fields.map(
-              (field) =>
-                `${field.name}: ${field.value}`
-            ),
+          keyPoints: data.analysis.fields.map(
+            (field) =>
+              `${field.name}: ${field.value}`
+          ),
 
           risks: [],
 
           recommendations: [],
+
+          documentId: data.upload.id,
+
+          fileName: data.upload.originalFileName,
+
+          documentType:
+            data.analysis.documentType ?? null,
+
+          status: data.upload.status,
+
+          fields: data.analysis.fields.map(
+            (field) => ({
+              name: field.name,
+              value: field.value,
+              confidence:
+                field.confidence ?? null,
+            })
+          ),
         };
       }
 
       case "url":
-
         throw new Error(
           "Website analysis is not implemented yet."
         );
 
       default:
-
         throw new Error(
           "Unsupported analysis mode."
         );

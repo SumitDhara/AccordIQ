@@ -7,9 +7,21 @@ export interface AnalyzeRequest {
   url?: string;
 }
 
+export interface AnalyzeField {
+  name: string;
+  value: string;
+  confidence: number | null;
+}
+
 export interface AnalyzeResponse {
   summary: string;
   keyPoints: string[];
   risks: string[];
   recommendations: string[];
+
+  documentId?: string;
+  fileName?: string;
+  documentType?: string | null;
+  status?: string | null;
+  fields?: AnalyzeField[];
 }
