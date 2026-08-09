@@ -1,9 +1,4 @@
-import axios, {
-  AxiosError,
-  InternalAxiosRequestConfig,
-} from "axios";
-
-import { authService } from "@/services/auth.service";
+import axios from "axios";
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -11,87 +6,53 @@ const apiBaseUrl =
 
 const apiClient = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 30000,
   headers: {
-    "Content-Type": "application/json",
+    Accept: "application/json",
   },
 });
 
-let refreshPromise: Promise<string | null> | null = null;
-
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (
-      typeof window !== "undefined" &&
-      !config.headers.Authorization
-    ) {
-      const token =
-        authService.getAccessToken();
+  (config) => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("accessToken");
 
       if (token) {
-        config.headers.Authorization =
-          `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${token}`;
       }
+    }
+
+    /*
+     * IMPORTANT:
+     * Let Axios/browser generate the multipart/form-data
+     * Content-Type including the boundary for FormData requests.
+     */
+    if (
+      typeof FormData !== "undefined" &&
+      config.data instanceof FormData
+    ) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
     }
 
     return config;
   },
-  (error) =>
-    Promise.reject(error)
+  (error) => Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(
   (response) => response,
-
-  async (error: AxiosError) => {
-    const originalRequest =
-      error.config as
-        | (InternalAxiosRequestConfig & {
-            _retry?: boolean;
-          })
-        | undefined;
-
-    if (
-      error.response?.status !== 401 ||
-      !originalRequest ||
-      originalRequest._retry ||
-      originalRequest.url?.includes("/auth/")
-    ) {
-      return Promise.reject(error);
+  (error) => {
+    if (error.response) {
+      console.error("[API Error]", {
+        status: error.response.status,
+        url: error.config?.url,
+        data: error.response.data,
+      });
+    } else {
+      console.error("[Network Error]", error.message);
     }
 
-    originalRequest._retry = true;
-
-    try {
-      if (!refreshPromise) {
-        refreshPromise =
-          authService
-            .refresh()
-            .then(
-              (auth) =>
-                auth?.accessToken ?? null
-            )
-            .finally(() => {
-              refreshPromise = null;
-            });
-      }
-
-      const newToken =
-        await refreshPromise;
-
-      if (!newToken) {
-        return Promise.reject(error);
-      }
-
-      originalRequest.headers.Authorization =
-        `Bearer ${newToken}`;
-
-      return apiClient.request(
-        originalRequest
-      );
-    } catch {
-      return Promise.reject(error);
-    }
+    return Promise.reject(error);
   }
 );
 
