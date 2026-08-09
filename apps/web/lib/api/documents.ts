@@ -16,12 +16,7 @@ export const documentApi = {
     const response =
       await apiClient.post<ApiResponse<UploadDocumentResponse>>(
         "/documents/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        formData
       );
 
     return response.data;
@@ -47,7 +42,7 @@ export const documentApi = {
 
   async delete(id: string) {
     const response =
-      await apiClient.delete<ApiResponse<void>>(
+      await apiClient.delete<ApiResponse<null>>(
         `/documents/${id}`
       );
 

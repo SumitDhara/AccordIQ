@@ -1,13 +1,9 @@
-import axios from "axios";
+import apiClient from "@/lib/api/client";
 
 import type {
   AnalyzeRequest,
   AnalyzeResponse,
 } from "@/types/analyze";
-
-const API =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "http://localhost:8080/api/v1";
 
 interface UploadAnalysisResponse {
   upload: {
@@ -36,8 +32,8 @@ class AnalyzeService {
   ): Promise<AnalyzeResponse> {
     switch (request.type) {
       case "text": {
-        const response = await axios.post(
-          `${API}/analyze/text`,
+        const response = await apiClient.post(
+          "/analyze/text",
           {
             text: request.text,
           }
@@ -55,14 +51,9 @@ class AnalyzeService {
 
         formData.append("file", request.file);
 
-        const response = await axios.post(
-          `${API}/documents/upload`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
+        const response = await apiClient.post(
+          "/documents/upload",
+          formData
         );
 
         const data: UploadAnalysisResponse =
