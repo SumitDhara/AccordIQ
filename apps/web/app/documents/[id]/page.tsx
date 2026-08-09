@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  FileText,
+  Trash2,
+} from "lucide-react";
 
 import { documentApi } from "@/lib/api/documents";
+import { reviewService } from "@/services/review.service";
 
 import { DocumentStatusBadge } from "@/components/documents/DocumentStatusBadge";
+import { ExportMenu } from "@/components/export/ExportMenu";
 
 import type { DocumentResponse } from "@/types/document";
+import type {
+  DocumentAnalysisDetail,
+} from "@/types/review";
+import type { ExportDocument } from "@/types/export";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) {
@@ -36,6 +47,27 @@ function getFileExtension(contentType: string) {
   return mimeTypes[contentType] ?? "FILE";
 }
 
+function buildExportDocument(
+  document: DocumentResponse,
+  analysis: DocumentAnalysisDetail | null
+): ExportDocument {
+  return {
+    id: document.id,
+    fileName: document.originalFileName,
+    documentType:
+      analysis?.documentType ??
+      getFileExtension(document.contentType),
+    summary: analysis?.summary ?? null,
+    status: document.status,
+    fields:
+      analysis?.fields.map((field) => ({
+        name: field.name,
+        value: field.value,
+        confidence: field.confidence,
+      })) ?? [],
+  };
+}
+
 export default function DocumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -43,28 +75,63 @@ export default function DocumentDetailsPage() {
   const [document, setDocument] =
     useState<DocumentResponse | null>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
+  const [analysis, setAnalysis] =
+    useState<DocumentAnalysisDetail | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [deleting, setDeleting] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
     async function load() {
       try {
-        const response = await documentApi.getById(id);
+        setLoading(true);
+        setError("");
 
-        setDocument(response.data);
-      } catch {
-        setError("Failed to load document.");
+        const documentResponse =
+          await documentApi.getById(id);
+
+        setDocument(documentResponse.data);
+
+        try {
+          const analysisResponse =
+            await reviewService.getAnalysis(id);
+
+          setAnalysis(analysisResponse);
+        } catch (analysisError) {
+          console.warn(
+            "No document analysis available:",
+            analysisError
+          );
+
+          setAnalysis(null);
+        }
+      } catch (loadError) {
+        console.error(
+          "Failed to load document:",
+          loadError
+        );
+
+        setError(
+          "Failed to load document."
+        );
       } finally {
         setLoading(false);
       }
     }
 
-    void load();
+    if (id) {
+      void load();
+    }
   }, [id]);
 
   async function handleDelete() {
-    if (!document) {
+    if (!document || deleting) {
       return;
     }
 
@@ -79,11 +146,20 @@ export default function DocumentDetailsPage() {
     try {
       setDeleting(true);
 
-      await documentApi.delete(document.id);
+      await documentApi.delete(
+        document.id
+      );
 
       router.push("/documents");
-    } catch {
-      window.alert("Failed to delete document.");
+    } catch (deleteError) {
+      console.error(
+        "Failed to delete document:",
+        deleteError
+      );
+
+      window.alert(
+        "Failed to delete document."
+      );
     } finally {
       setDeleting(false);
     }
@@ -91,12 +167,12 @@ export default function DocumentDetailsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 px-6 py-12">
+      <main className="min-h-screen px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-            <div className="h-8 w-64 animate-pulse rounded-lg bg-gray-200" />
-            <div className="mt-4 h-4 w-96 animate-pulse rounded bg-gray-100" />
-            <div className="mt-10 h-32 animate-pulse rounded-xl bg-gray-100" />
+          <div className="animate-pulse space-y-6">
+            <div className="h-5 w-32 rounded bg-gray-200" />
+            <div className="h-10 w-2/3 rounded bg-gray-200" />
+            <div className="h-64 rounded-2xl bg-gray-200" />
           </div>
         </div>
       </main>
@@ -105,140 +181,241 @@ export default function DocumentDetailsPage() {
 
   if (error || !document) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {error || "Document not found."}
-          </h1>
+      <main className="min-h-screen px-6 py-16">
+        <div className="mx-auto max-w-5xl">
+          <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {error || "Document not found."}
+            </h1>
 
-          <Link
-            href="/documents"
-            className="mt-6 inline-flex rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
-          >
-            Back to Documents
-          </Link>
+            <Link
+              href="/documents"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Documents
+            </Link>
+          </section>
         </div>
       </main>
     );
   }
 
+  const exportDocument =
+    buildExportDocument(
+      document,
+      analysis
+    );
+
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
+    <main className="min-h-screen px-6 py-12">
       <div className="mx-auto max-w-5xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <Link
-              href="/documents"
-              className="text-sm font-medium text-gray-500 transition hover:text-gray-900"
-            >
-              ← Documents
-            </Link>
+        <Link
+          href="/documents"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Documents
+        </Link>
 
-            <h1 className="mt-4 truncate text-3xl font-bold tracking-tight text-gray-900">
-              {document.originalFileName}
-            </h1>
+        {/* Document header */}
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
+            <div className="flex gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
+                <FileText className="h-6 w-6 text-gray-700" />
+              </div>
 
-            <p className="mt-2 text-sm text-gray-500">
-              Document details and processing information
-            </p>
-          </div>
+              <div>
+                <p className="text-sm text-gray-500">
+                  Document
+                </p>
 
-          <DocumentStatusBadge status={document.status} />
-        </div>
+                <h1 className="mt-1 break-all text-2xl font-bold tracking-tight text-gray-900">
+                  {document.originalFileName}
+                </h1>
 
-        {/* Document information */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Document Information
-          </h2>
-
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                File Name
-              </p>
-
-              <p className="mt-2 truncate text-sm font-medium text-gray-900">
-                {document.originalFileName}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                File Type
-              </p>
-
-              <p className="mt-2 text-sm font-medium text-gray-900">
-                {getFileExtension(document.contentType)}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Content Type
-              </p>
-
-              <p className="mt-2 truncate text-sm font-medium text-gray-900">
-                {document.contentType}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                File Size
-              </p>
-
-              <p className="mt-2 text-sm font-medium text-gray-900">
-                {formatFileSize(document.fileSize)}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Status
-              </p>
-
-              <div className="mt-2">
-                <DocumentStatusBadge status={document.status} />
+                <p className="mt-2 text-sm text-gray-500">
+                  {getFileExtension(
+                    document.contentType
+                  )}{" "}
+                  ·{" "}
+                  {formatFileSize(
+                    document.fileSize
+                  )}
+                </p>
               </div>
             </div>
+
+            <DocumentStatusBadge
+              status={document.status}
+            />
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-100 pt-6">
+            <ExportMenu
+              document={exportDocument}
+            />
+
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() =>
+                void handleDelete()
+              }
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+
+              {deleting
+                ? "Deleting..."
+                : "Delete Document"}
+            </button>
           </div>
         </section>
 
-        {/* Actions */}
-        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        {/* Analysis */}
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">
-            Actions
+            Analysis
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Review extracted information or manage this document.
+          {!analysis ? (
+            <div className="mt-4 rounded-xl bg-gray-50 p-5">
+              <p className="text-sm text-gray-500">
+                No analysis is available for this
+                document yet.
+              </p>
+
+              <Link
+                href="/analyze"
+                className="mt-4 inline-flex rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
+              >
+                Analyze Document
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-8">
+              {/* Summary */}
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Summary
+                </p>
+
+                <p className="mt-2 leading-7 text-gray-700">
+                  {analysis.summary ||
+                    "No summary available."}
+                </p>
+              </div>
+
+              {/* Document type */}
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Document Type
+                </p>
+
+                <p className="mt-2 font-semibold text-gray-900">
+                  {analysis.documentType ||
+                    "Unknown"}
+                </p>
+              </div>
+
+              {/* Fields */}
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-medium text-gray-500">
+                    Extracted Fields
+                  </p>
+
+                  <span className="text-xs text-gray-400">
+                    {analysis.fields.length}{" "}
+                    {analysis.fields.length === 1
+                      ? "field"
+                      : "fields"}
+                  </span>
+                </div>
+
+                {analysis.fields.length === 0 ? (
+                  <div className="mt-3 rounded-xl bg-gray-50 p-5">
+                    <p className="text-sm text-gray-500">
+                      No structured fields were
+                      extracted.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-200">
+                    {analysis.fields.map(
+                      (field) => (
+                        <div
+                          key={field.id}
+                          className="grid gap-3 p-4 md:grid-cols-[1fr_2fr_auto] md:items-center"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              {field.name}
+                            </p>
+                          </div>
+
+                          <p className="break-words text-sm font-medium text-gray-900">
+                            {field.value ||
+                              "—"}
+                          </p>
+
+                          <div className="text-sm text-gray-500 md:text-right">
+                            {field.confidence ==
+                            null
+                              ? "—"
+                              : `${field.confidence}%`}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Overall confidence */}
+              {analysis.confidence != null && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Overall Confidence
+                  </p>
+
+                  <p className="mt-2 font-semibold text-gray-900">
+                    {analysis.confidence}%
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Workflow */}
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Continue Workflow
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            Continue processing this document
+            through AccordIQ's analysis and
+            review workflow.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href={`/review/${document.id}`}
-              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+              href="/analyze"
+              className="inline-flex rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
             >
-              Review Document
+              Analyze Document
             </Link>
 
             <Link
-              href="/documents"
-              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              href="/review"
+              className="inline-flex rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
             >
-              Back to Documents
+              Review Documents
             </Link>
-
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="inline-flex items-center justify-center rounded-xl border border-red-200 px-5 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {deleting ? "Deleting..." : "Delete Document"}
-            </button>
           </div>
         </section>
       </div>
