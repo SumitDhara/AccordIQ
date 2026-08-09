@@ -29,24 +29,26 @@ export interface RegisterRequest {
 }
 
 async function authenticate(
-  endpoint: string,
+  endpoint: "login" | "register",
   payload: LoginRequest | RegisterRequest
 ): Promise<AuthResponse> {
-  const response = await axios.post<
-    ApiResponse<AuthResponse>
-  >(`${API}/auth/${endpoint}`, payload);
+  const response = await axios.post<ApiResponse<AuthResponse>>(
+    `${API}/auth/${endpoint}`,
+    payload
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(
+      response.data.message || "Authentication failed."
+    );
+  }
 
   const auth = response.data.data;
 
-  localStorage.setItem(
-    "accessToken",
-    auth.accessToken
-  );
-
-  localStorage.setItem(
-    "refreshToken",
-    auth.refreshToken
-  );
+  if (typeof window !== "undefined") {
+    localStorage.setItem("accessToken", auth.accessToken);
+    localStorage.setItem("refreshToken", auth.refreshToken);
+  }
 
   return auth;
 }
@@ -60,22 +62,79 @@ export const authService = {
     return authenticate("register", request);
   },
 
+  async refresh(): Promise<AuthResponse | null> {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const refreshToken =
+      localStorage.getItem("refreshToken");
+
+    if (!refreshToken) {
+      return null;
+    }
+
+    try {
+      const response = await axios.post<
+        ApiResponse<AuthResponse>
+      >(`${API}/auth/refresh`, {
+        refreshToken,
+      });
+
+      if (
+        !response.data.success ||
+        !response.data.data
+      ) {
+        throw new Error("Token refresh failed.");
+      }
+
+      const auth = response.data.data;
+
+      localStorage.setItem(
+        "accessToken",
+        auth.accessToken
+      );
+
+      if (auth.refreshToken) {
+        localStorage.setItem(
+          "refreshToken",
+          auth.refreshToken
+        );
+      }
+
+      return auth;
+    } catch {
+      authService.logout();
+      return null;
+    }
+  },
+
   logout() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
   },
 
   getAccessToken() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
     return localStorage.getItem("accessToken");
   },
 
   getRefreshToken() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
     return localStorage.getItem("refreshToken");
   },
 
   isAuthenticated() {
-    return Boolean(
-      localStorage.getItem("accessToken")
-    );
+    return Boolean(authService.getAccessToken());
   },
 };
