@@ -13,17 +13,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://accordiq.app"),
-
   title: {
     default: "AccordIQ",
     template: "%s | AccordIQ",
   },
-
   description:
-    "AI-powered document intelligence platform for OCR, AI extraction, validation, and document understanding.",
-
+    "AI-powered document intelligence platform for OCR, intelligent extraction, validation, and document understanding.",
   applicationName: "AccordIQ",
-
   keywords: [
     "AccordIQ",
     "OCR",
@@ -31,12 +27,10 @@ export const metadata: Metadata = {
     "Document Intelligence",
     "Spring Boot",
     "Next.js",
-    "Gemini",
     "Tesseract",
     "Invoice OCR",
     "Receipt OCR",
   ],
-
   authors: [
     {
       name: "Sumit Dhara",
@@ -54,7 +48,12 @@ export default function RootLayout({
       <body
         className={`${inter.variable} min-h-screen font-sans antialiased`}
       >
-        <ThemeProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
           {children}
         </ThemeProvider>
       </body>

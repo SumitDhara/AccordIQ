@@ -22,21 +22,19 @@ export default function Navbar() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
 
-  const [mounted, setMounted] =
-    useState(false);
-
-  const [authenticated, setAuthenticated] =
-    useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setAuthenticated(
-      authService.isAuthenticated()
-    );
+    setAuthenticated(authService.isAuthenticated());
   }, []);
 
-  const isDark =
-    mounted && theme === "dark";
+  const isDark = mounted && theme === "dark";
+
+  function handleThemeToggle() {
+    setTheme(isDark ? "light" : "dark");
+  }
 
   function handleLogout() {
     authService.logout();
@@ -45,18 +43,14 @@ export default function Navbar() {
   }
 
   return (
-    <header className="border-b bg-background/80 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-xl">
       <Container>
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-16 items-center justify-between gap-4">
           <Link
-            href={
-              authenticated
-                ? "/dashboard"
-                : "/"
-            }
-            className="flex items-center gap-3"
+            href={authenticated ? "/dashboard" : "/"}
+            className="flex shrink-0 items-center gap-3"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <FileText className="h-4 w-4" />
             </div>
 
@@ -72,7 +66,7 @@ export default function Navbar() {
           </Link>
 
           <nav
-            className="hidden items-center gap-2 md:flex"
+            className="hidden items-center gap-1 md:flex"
             aria-label="Primary navigation"
           >
             {authenticated ? (
@@ -118,15 +112,10 @@ export default function Navbar() {
           </nav>
 
           <Button
+            type="button"
             variant="glass"
             size="icon"
-            onClick={() =>
-              setTheme(
-                isDark
-                  ? "light"
-                  : "dark"
-              )
-            }
+            onClick={handleThemeToggle}
             disabled={!mounted}
             aria-label={
               isDark
@@ -138,6 +127,7 @@ export default function Navbar() {
                 ? "Switch to light theme"
                 : "Switch to dark theme"
             }
+            className="shrink-0 rounded-xl"
           >
             {isDark ? (
               <Sun className="h-5 w-5" />
