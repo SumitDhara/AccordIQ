@@ -21,6 +21,7 @@ RUN ./mvnw clean package -DskipTests -B \
 
 # ============================================================
 # Stage 2 — Build Leptonica 1.85.0
+# Required by Lept4J 1.21.1 / Tess4J 5.16.0
 # ============================================================
 FROM ubuntu:22.04 AS leptonica-builder
 
@@ -73,18 +74,27 @@ RUN curl -fsSL \
 FROM eclipse-temurin:21-jre-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata
 
+# AccordIQ / Tess4J expects the language data here.
+ENV TESSDATA_PREFIX=/opt/tesseract/tessdata
+
+# Install Tesseract and English language data.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         tesseract-ocr \
         tesseract-ocr-eng \
+    && mkdir -p /opt/tesseract/tessdata \
+    && cp /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata \
+        /opt/tesseract/tessdata/eng.traineddata \
+    && test -f /opt/tesseract/tessdata/eng.traineddata \
     && rm -rf /var/lib/apt/lists/*
 
+# Install the compatible Leptonica shared library.
 COPY --from=leptonica-builder \
     /usr/local/lib/libleptonica.so* \
     /usr/local/lib/
 
+# Register the custom native library path.
 RUN printf '%s\n' '/usr/local/lib' \
         > /etc/ld.so.conf.d/accordiq-leptonica.conf \
     && ldconfig \
@@ -92,10 +102,12 @@ RUN printf '%s\n' '/usr/local/lib' \
 
 WORKDIR /app
 
+# Copy the application JAR produced by Maven.
 COPY --from=app-builder \
     /workspace/target/*.jar \
     /app/accordiq-api.jar
 
+# Render supplies PORT=10000 for the current service.
 EXPOSE 10000
 
 ENTRYPOINT ["java", "-jar", "/app/accordiq-api.jar"]
