@@ -1,106 +1,106 @@
-# ==========================================================
-# Build stage
-# ==========================================================
+# syntax=docker/dockerfile:1
 
-FROM maven:3.9.11-eclipse-temurin-21 AS builder
+# ============================================================
+# Stage 1: Build the Spring Boot application
+# ============================================================
+FROM maven:3.9.9-eclipse-temurin-21 AS app-builder
 
-WORKDIR /build
+WORKDIR /workspace
 
-COPY pom.xml ./
+COPY . .
 
-RUN mvn dependency:go-offline -B
-
-COPY src ./src
-
-RUN mvn clean package -DskipTests -B
+RUN chmod +x mvnw \
+    && ./mvnw clean package -DskipTests -B
 
 
-# ==========================================================
-# Runtime stage
-# ==========================================================
+# ============================================================
+# Stage 2: Build the exact Leptonica version required by
+# Lept4J 1.21.1 / Tess4J 5.16.0
+#
+# IMPORTANT:
+# We intentionally download the official RELEASE TAR.GZ.
+# The GitHub source archive does not contain ./configure.
+# ============================================================
+FROM ubuntu:22.04 AS leptonica-builder
 
+ARG LEPTONICA_VERSION=1.85.0
+ARG LEPTONICA_SHA256=3745ae3bf271a6801a2292eead83ac926e3a9bc1bf622e9cd4dd0f3786e17205
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        build-essential \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config \
+        libjpeg-dev \
+        libpng-dev \
+        libtiff-dev \
+        libwebp-dev \
+        libopenjp2-7-dev \
+        libgif-dev \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+
+RUN curl -fsSL \
+        "https://github.com/DanBloomberg/leptonica/releases/download/${LEPTONICA_VERSION}/leptonica-${LEPTONICA_VERSION}.tar.gz" \
+        -o "leptonica-${LEPTONICA_VERSION}.tar.gz" \
+    && echo "${LEPTONICA_SHA256}  leptonica-${LEPTONICA_VERSION}.tar.gz" \
+        | sha256sum -c - \
+    && tar -xzf "leptonica-${LEPTONICA_VERSION}.tar.gz" \
+    && cd "leptonica-${LEPTONICA_VERSION}" \
+    && CFLAGS="-O2" ./configure \
+        --prefix=/usr/local \
+        --enable-shared \
+        --disable-static \
+        --disable-programs \
+    && make -j"$(nproc)" \
+    && make install-strip \
+    && ldconfig \
+    && ldconfig -p | grep -i leptonica
+
+
+# ============================================================
+# Stage 3: Runtime
+# ============================================================
 FROM eclipse-temurin:21-jre-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ==========================================================
-# Native OCR dependencies
-#
-# Tess4J 5.16.0 -> Lept4J 1.21.1
-# Lept4J 1.21.1 uses Leptonica 1.85.0.
-#
-# Ubuntu 22.04 ships an older Leptonica, so we build
-# Leptonica 1.85.0 from its official release archive.
-# ==========================================================
+# Tesseract language data on Ubuntu Jammy is installed under
+# /usr/share/tesseract-ocr/4.00/tessdata.
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
-        ca-certificates \
-        curl \
-        pkg-config \
-        libpng-dev \
-        libjpeg-dev \
-        libtiff-dev \
-        libwebp-dev \
-        libopenjp2-7-dev \
-        zlib1g-dev \
-    \
-    && mkdir -p /tmp/leptonica \
-    \
-    && curl -fsSL \
-        https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.85.0.tar.gz \
-        -o /tmp/leptonica.tar.gz \
-    \
-    && tar -xzf /tmp/leptonica.tar.gz \
-        --strip-components=1 \
-        -C /tmp/leptonica \
-    \
-    && cd /tmp/leptonica \
-    \
-    && ./configure \
-        --prefix=/usr/local \
-        --disable-programs \
-        --disable-doc \
-    \
-    && make -j2 \
-    && make install \
-    && ldconfig \
-    \
-    && mkdir -p /opt/tesseract/tessdata \
-    \
-    && apt-get install -y --no-install-recommends \
+        tesseract-ocr \
         tesseract-ocr-eng \
-    \
-    && cp \
-        /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata \
-        /opt/tesseract/tessdata/eng.traineddata \
-    \
-    && rm -rf /tmp/leptonica /tmp/leptonica.tar.gz \
-    \
-    && apt-get remove -y \
-        build-essential \
-        curl \
-        pkg-config \
-    \
-    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy the compatible Leptonica 1.85.0 shared library.
+COPY --from=leptonica-builder \
+    /usr/local/lib/libleptonica.so* \
+    /usr/local/lib/
 
-# ==========================================================
-# Application
-# ==========================================================
+# Make /usr/local/lib visible to the dynamic linker.
+RUN printf '%s\n' '/usr/local/lib' \
+        > /etc/ld.so.conf.d/accordiq-leptonica.conf \
+    && ldconfig \
+    && ldconfig -p | grep -i leptonica \
+    && test -f /usr/local/lib/libleptonica.so
 
 WORKDIR /app
 
-COPY --from=builder /build/target/*.jar /app/accordiq-api.jar
+COPY --from=app-builder \
+    /workspace/apps/api/target/accordiq-api-0.0.1-SNAPSHOT.jar \
+    /app/accordiq-api.jar
 
+EXPOSE 10000
 
-# Keep the JVM within Render's free-instance memory budget.
-ENV JAVA_OPTS="-Xms128m -Xmx300m"
-
-
-# Render supplies the PORT environment variable.
-EXPOSE 8080
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar /app/accordiq-api.jar"]
+ENTRYPOINT ["java", "-jar", "/app/accordiq-api.jar"]
