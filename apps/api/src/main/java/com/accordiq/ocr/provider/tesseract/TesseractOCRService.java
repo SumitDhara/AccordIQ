@@ -22,6 +22,9 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class TesseractOCRService implements OCRService {
 
+    private static final int PDF_DPI = 120;
+    private static final int MAX_PDF_PAGES = 20;
+
     private final Tesseract tesseract;
 
     @Override
@@ -34,7 +37,6 @@ public class TesseractOCRService implements OCRService {
         }
 
         try {
-
             String name = filePath.getFileName()
                     .toString()
                     .toLowerCase(Locale.ROOT);
@@ -55,8 +57,10 @@ public class TesseractOCRService implements OCRService {
                     )
                     .build();
 
-        } catch (Exception ex) {
+        } catch (OCRException ex) {
+            throw ex;
 
+        } catch (Exception ex) {
             throw new OCRException(
                     "OCR processing failed.",
                     ex
@@ -72,18 +76,28 @@ public class TesseractOCRService implements OCRService {
         try (PDDocument document =
                      Loader.loadPDF(pdfPath.toFile())) {
 
+            int pageCount = document.getNumberOfPages();
+
+            if (pageCount > MAX_PDF_PAGES) {
+                throw new OCRException(
+                        "PDF exceeds the maximum supported length of "
+                                + MAX_PDF_PAGES
+                                + " pages."
+                );
+            }
+
             PDFRenderer renderer =
                     new PDFRenderer(document);
 
-            for (int i = 0;
-                 i < document.getNumberOfPages();
-                 i++) {
+            for (int i = 0; i < pageCount; i++) {
 
                 BufferedImage image =
-                        renderer.renderImageWithDPI(i, 150);
+                        renderer.renderImageWithDPI(
+                                i,
+                                PDF_DPI
+                        );
 
                 try {
-
                     builder.append(
                             tesseract.doOCR(image)
                     );
@@ -93,7 +107,6 @@ public class TesseractOCRService implements OCRService {
                     );
 
                 } finally {
-
                     image.flush();
                 }
             }
@@ -109,12 +122,13 @@ public class TesseractOCRService implements OCRService {
                 ImageIO.read(imagePath.toFile());
 
         if (image == null) {
-            throw new OCRException("Unsupported image.");
+            throw new OCRException(
+                    "Unsupported or invalid image."
+            );
         }
 
         try {
             return tesseract.doOCR(image);
-
         } finally {
             image.flush();
         }

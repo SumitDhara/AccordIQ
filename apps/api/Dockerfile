@@ -32,7 +32,7 @@ WORKDIR /app
 
 COPY --from=builder /build/target/*.jar /app/accordiq-api.jar
 
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=60.0"
+ENV JAVA_OPTS="-Xms128m -Xmx300m"
 
 EXPOSE 8080
 
