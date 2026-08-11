@@ -14,6 +14,7 @@ COPY src ./src
 
 RUN mvn clean package -DskipTests -B
 
+
 # ==========================================================
 # Runtime stage
 # ==========================================================
@@ -22,15 +23,45 @@ FROM eclipse-temurin:21-jre-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Build and install Leptonica 1.85.0.
+# Tess4J 5.16.0 / Lept4J 1.21.1 requires
+# Leptonica >= 1.84 for pixDisplayDiff().
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        tesseract-ocr \
-        tesseract-ocr-eng \
-        libtesseract-dev \
-        libleptonica-dev \
-    && mkdir -p /opt/tesseract/tessdata \
-    && cp /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata /opt/tesseract/tessdata/ \
+        build-essential \
+        cmake \
+        git \
+        pkg-config \
+        autoconf \
+        automake \
+        libtool \
+        libpng-dev \
+        libjpeg-dev \
+        libtiff-dev \
+        libwebp-dev \
+        libopenjp2-7-dev \
+        zlib1g-dev \
+    && git clone --depth 1 --branch 1.85.0 \
+        https://github.com/DanBloomberg/leptonica.git \
+        /tmp/leptonica \
+    && cd /tmp/leptonica \
+    && ./autobuild \
+    && ./configure \
+    && make -j2 \
+    && make install \
+    && ldconfig \
+    && rm -rf /tmp/leptonica \
+    && apt-get remove -y \
+        build-essential \
+        cmake \
+        git \
+        pkg-config \
+        autoconf \
+        automake \
+        libtool \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 
