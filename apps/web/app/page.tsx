@@ -1,5 +1,10 @@
-import { Hero } from "@/components/landing/hero";
+import AnalyzeWorkspace from "@/components/analyze/AnalyzeWorkspace";
+import AppLayout from "@/components/layout/AppLayout";
 
 export default function HomePage() {
-  return <Hero />;
+  return (
+    <AppLayout>
+      <AnalyzeWorkspace />
+    </AppLayout>
+  );
 }
