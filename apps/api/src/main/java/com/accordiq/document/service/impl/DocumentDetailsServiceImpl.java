@@ -10,6 +10,8 @@ import com.accordiq.documentanalysis.entity.DocumentAnalysis;
 import com.accordiq.documentanalysis.repository.DocumentAnalysisRepository;
 import com.accordiq.documentfield.entity.DocumentField;
 import com.accordiq.documentfield.repository.DocumentFieldRepository;
+import com.accordiq.security.util.CurrentUserService;
+import com.accordiq.user.entity.User;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,21 +22,20 @@ public class DocumentDetailsServiceImpl
         implements DocumentDetailsService {
 
     private final DocumentRepository documentRepository;
-
-    private final DocumentAnalysisRepository
-            analysisRepository;
-
-    private final DocumentFieldRepository
-            fieldRepository;
+    private final DocumentAnalysisRepository analysisRepository;
+    private final DocumentFieldRepository fieldRepository;
+    private final CurrentUserService currentUserService;
 
     public DocumentDetailsServiceImpl(
             DocumentRepository documentRepository,
             DocumentAnalysisRepository analysisRepository,
-            DocumentFieldRepository fieldRepository
+            DocumentFieldRepository fieldRepository,
+            CurrentUserService currentUserService
     ) {
         this.documentRepository = documentRepository;
         this.analysisRepository = analysisRepository;
         this.fieldRepository = fieldRepository;
+        this.currentUserService = currentUserService;
     }
 
     @Override
@@ -42,8 +43,15 @@ public class DocumentDetailsServiceImpl
             UUID documentId
     ) {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         Document document =
-                documentRepository.findById(documentId)
+                documentRepository
+                        .findByIdAndOwner(
+                                documentId,
+                                currentUser
+                        )
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Document not found with id: "
@@ -61,45 +69,33 @@ public class DocumentDetailsServiceImpl
                 List.of();
 
         String summary = null;
-
         String documentType = null;
 
         if (analysis != null) {
 
             summary = analysis.getSummary();
-
             documentType = analysis.getDocumentType();
 
-            fields = fieldRepository
-                    .findByAnalysisId(
-                            analysis.getId()
-                    )
-                    .stream()
-                    .map(this::mapField)
-                    .toList();
-
+            fields =
+                    fieldRepository
+                            .findByAnalysisId(
+                                    analysis.getId()
+                            )
+                            .stream()
+                            .map(this::mapField)
+                            .toList();
         }
 
         return new DocumentDetailsResponse(
-
                 document.getId(),
-
                 document.getOriginalFileName(),
-
                 document.getContentType(),
-
                 document.getFileSize(),
-
                 document.getStatus(),
-
                 documentType,
-
                 summary,
-
                 fields
-
         );
-
     }
 
     private DocumentFieldResponse mapField(
@@ -107,15 +103,9 @@ public class DocumentDetailsServiceImpl
     ) {
 
         return new DocumentFieldResponse(
-
                 field.getFieldName(),
-
                 field.getFieldValue(),
-
                 field.getConfidence()
-
         );
-
     }
-
 }

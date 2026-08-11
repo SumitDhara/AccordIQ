@@ -11,7 +11,9 @@ import com.accordiq.document.enums.DocumentStatus;
 import com.accordiq.document.processing.DocumentProcessingService;
 import com.accordiq.document.repository.DocumentRepository;
 import com.accordiq.document.service.DocumentService;
+import com.accordiq.security.util.CurrentUserService;
 import com.accordiq.storage.service.FileStorageService;
+import com.accordiq.user.entity.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,25 +30,29 @@ public class DocumentServiceImpl implements DocumentService {
             LoggerFactory.getLogger(DocumentServiceImpl.class);
 
     private final DocumentRepository documentRepository;
-
     private final FileStorageService fileStorageService;
-
     private final DocumentProcessingService documentProcessingService;
+    private final CurrentUserService currentUserService;
 
     public DocumentServiceImpl(
             DocumentRepository documentRepository,
             FileStorageService fileStorageService,
-            DocumentProcessingService documentProcessingService
+            DocumentProcessingService documentProcessingService,
+            CurrentUserService currentUserService
     ) {
         this.documentRepository = documentRepository;
         this.fileStorageService = fileStorageService;
         this.documentProcessingService = documentProcessingService;
+        this.currentUserService = currentUserService;
     }
 
     @Override
     public UploadAnalysisResponse upload(
             MultipartFile file
     ) throws IOException {
+
+        User currentUser =
+                currentUserService.getCurrentUser();
 
         /*
          * Store the uploaded file temporarily.
@@ -79,6 +85,7 @@ public class DocumentServiceImpl implements DocumentService {
                                             .resolve(storedFileName)
                                             .toString()
                             )
+                            .owner(currentUser)
                             .build();
 
             Document savedDocument =
@@ -86,10 +93,6 @@ public class DocumentServiceImpl implements DocumentService {
 
             try {
 
-                /*
-                 * OCR + AI analysis + persistence of the
-                 * resulting analysis and extracted fields.
-                 */
                 DocumentAnalysisResponse analysis =
                         documentProcessingService.process(
                                 savedDocument
@@ -97,19 +100,12 @@ public class DocumentServiceImpl implements DocumentService {
 
                 UploadDocumentResponse upload =
                         new UploadDocumentResponse(
-
                                 savedDocument.getId(),
-
                                 savedDocument.getOriginalFileName(),
-
                                 savedDocument.getStoredFileName(),
-
                                 savedDocument.getContentType(),
-
                                 savedDocument.getFileSize(),
-
                                 savedDocument.getStatus().name()
-
                         );
 
                 return new UploadAnalysisResponse(
@@ -119,10 +115,6 @@ public class DocumentServiceImpl implements DocumentService {
 
             } catch (RuntimeException exception) {
 
-                /*
-                 * If document processing fails, explicitly
-                 * persist FAILED from this outer workflow.
-                 */
                 savedDocument.setStatus(
                         DocumentStatus.FAILED
                 );
@@ -155,10 +147,6 @@ public class DocumentServiceImpl implements DocumentService {
 
             } catch (IOException cleanupException) {
 
-                /*
-                 * Cleanup failure must not hide the original
-                 * upload or processing exception.
-                 */
                 LOGGER.warn(
                         "Failed to remove temporary uploaded file: {}",
                         storedFileName,
@@ -171,8 +159,13 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public List<DocumentResponse> getAllDocuments() {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         return documentRepository
-                .findAllByOrderByCreatedAtDesc()
+                .findAllByOwnerOrderByCreatedAtDesc(
+                        currentUser
+                )
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -183,9 +176,15 @@ public class DocumentServiceImpl implements DocumentService {
             UUID id
     ) {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         Document document =
                 documentRepository
-                        .findById(id)
+                        .findByIdAndOwner(
+                                id,
+                                currentUser
+                        )
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Document not found with id: "
@@ -201,9 +200,15 @@ public class DocumentServiceImpl implements DocumentService {
             UUID id
     ) {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         Document document =
                 documentRepository
-                        .findById(id)
+                        .findByIdAndOwner(
+                                id,
+                                currentUser
+                        )
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Document not found with id: "
@@ -242,6 +247,9 @@ public class DocumentServiceImpl implements DocumentService {
             DocumentStatus status
     ) {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         keyword =
                 keyword == null
                         ? null
@@ -259,7 +267,8 @@ public class DocumentServiceImpl implements DocumentService {
 
             documents =
                     documentRepository
-                            .findByOriginalFileNameContainingIgnoreCaseAndStatusOrderByCreatedAtDesc(
+                            .findByOwnerAndOriginalFileNameContainingIgnoreCaseAndStatusOrderByCreatedAtDesc(
+                                    currentUser,
                                     keyword,
                                     status
                             );
@@ -268,7 +277,8 @@ public class DocumentServiceImpl implements DocumentService {
 
             documents =
                     documentRepository
-                            .findByOriginalFileNameContainingIgnoreCaseOrderByCreatedAtDesc(
+                            .findByOwnerAndOriginalFileNameContainingIgnoreCaseOrderByCreatedAtDesc(
+                                    currentUser,
                                     keyword
                             );
 
@@ -276,7 +286,8 @@ public class DocumentServiceImpl implements DocumentService {
 
             documents =
                     documentRepository
-                            .findByStatusOrderByCreatedAtDesc(
+                            .findByOwnerAndStatusOrderByCreatedAtDesc(
+                                    currentUser,
                                     status
                             );
 
@@ -284,8 +295,9 @@ public class DocumentServiceImpl implements DocumentService {
 
             documents =
                     documentRepository
-                            .findAllByOrderByCreatedAtDesc();
-
+                            .findAllByOwnerOrderByCreatedAtDesc(
+                                    currentUser
+                            );
         }
 
         return documents
@@ -299,13 +311,6 @@ public class DocumentServiceImpl implements DocumentService {
             DocumentSearchRequest request
     ) {
 
-        /*
-         * Phase 1 implementation.
-         *
-         * Currently delegates to the existing search API.
-         * Document-type and extracted-field searching can
-         * be added in a later search enhancement.
-         */
         return searchDocuments(
                 request.keyword(),
                 request.status()
@@ -317,17 +322,11 @@ public class DocumentServiceImpl implements DocumentService {
     ) {
 
         return new DocumentResponse(
-
                 document.getId(),
-
                 document.getOriginalFileName(),
-
                 document.getContentType(),
-
                 document.getFileSize(),
-
                 document.getStatus()
-
         );
     }
 }

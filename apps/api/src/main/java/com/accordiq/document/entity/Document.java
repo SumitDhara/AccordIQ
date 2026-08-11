@@ -2,6 +2,7 @@ package com.accordiq.document.entity;
 
 import com.accordiq.common.entity.BaseEntity;
 import com.accordiq.document.enums.DocumentStatus;
+import com.accordiq.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,9 +30,12 @@ public class Document extends BaseEntity {
     @Column(nullable = false)
     private String storagePath;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private DocumentStatus status = DocumentStatus.UPLOADED;
-
 }

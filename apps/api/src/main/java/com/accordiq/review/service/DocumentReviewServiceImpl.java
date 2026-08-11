@@ -9,6 +9,8 @@ import com.accordiq.review.dto.response.ReviewResponse;
 import com.accordiq.review.entity.DocumentReview;
 import com.accordiq.review.enums.ReviewStatus;
 import com.accordiq.review.repository.DocumentReviewRepository;
+import com.accordiq.security.util.CurrentUserService;
+import com.accordiq.user.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +23,17 @@ public class DocumentReviewServiceImpl
         implements DocumentReviewService {
 
     private final DocumentReviewRepository reviewRepository;
-
     private final DocumentRepository documentRepository;
+    private final CurrentUserService currentUserService;
 
     public DocumentReviewServiceImpl(
             DocumentReviewRepository reviewRepository,
-            DocumentRepository documentRepository
+            DocumentRepository documentRepository,
+            CurrentUserService currentUserService
     ) {
         this.reviewRepository = reviewRepository;
         this.documentRepository = documentRepository;
+        this.currentUserService = currentUserService;
     }
 
     @Override
@@ -40,23 +44,19 @@ public class DocumentReviewServiceImpl
 
         DocumentReview review = getOrCreate(documentId);
 
-        review.setStatus(
-                ReviewStatus.APPROVED
-        );
+        review.setStatus(ReviewStatus.APPROVED);
 
         review.setReviewerComments(
                 request.comments()
         );
 
-        reviewRepository.save(review);
-
-        updateDocumentStatus(
-                documentId,
+        review.getDocument().setStatus(
                 DocumentStatus.COMPLETED
         );
 
-        return map(review);
+        reviewRepository.save(review);
 
+        return map(review);
     }
 
     @Override
@@ -67,23 +67,19 @@ public class DocumentReviewServiceImpl
 
         DocumentReview review = getOrCreate(documentId);
 
-        review.setStatus(
-                ReviewStatus.REJECTED
-        );
+        review.setStatus(ReviewStatus.REJECTED);
 
         review.setReviewerComments(
                 request.comments()
         );
 
-        reviewRepository.save(review);
-
-        updateDocumentStatus(
-                documentId,
+        review.getDocument().setStatus(
                 DocumentStatus.REVIEW_REQUIRED
         );
 
-        return map(review);
+        reviewRepository.save(review);
 
+        return map(review);
     }
 
     @Override
@@ -92,9 +88,12 @@ public class DocumentReviewServiceImpl
             UUID documentId
     ) {
 
+        Document document =
+                getOwnedDocument(documentId);
+
         DocumentReview review =
                 reviewRepository
-                        .findByDocumentId(documentId)
+                        .findByDocumentId(document.getId())
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Review not found for document: "
@@ -103,40 +102,35 @@ public class DocumentReviewServiceImpl
                         );
 
         return map(review);
-
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReviewResponse> getPendingReviews() {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         return reviewRepository
-                .findByStatusOrderByCreatedAtAsc(
-                        ReviewStatus.PENDING
+                .findByStatusAndDocumentOwnerOrderByCreatedAtAsc(
+                        ReviewStatus.PENDING,
+                        currentUser
                 )
                 .stream()
                 .map(this::map)
                 .toList();
-
     }
 
     private DocumentReview getOrCreate(
             UUID documentId
     ) {
 
-        return reviewRepository
-                .findByDocumentId(documentId)
-                .orElseGet(() -> {
+        Document document =
+                getOwnedDocument(documentId);
 
-                    Document document =
-                            documentRepository
-                                    .findById(documentId)
-                                    .orElseThrow(() ->
-                                            new ResourceNotFoundException(
-                                                    "Document not found: "
-                                                            + documentId
-                                            )
-                                    );
+        return reviewRepository
+                .findByDocumentId(document.getId())
+                .orElseGet(() -> {
 
                     DocumentReview review =
                             DocumentReview.builder()
@@ -147,30 +141,27 @@ public class DocumentReviewServiceImpl
                                     .build();
 
                     return reviewRepository.save(review);
-
                 });
-
     }
 
-    private void updateDocumentStatus(
-            UUID documentId,
-            DocumentStatus status
+    private Document getOwnedDocument(
+            UUID documentId
     ) {
 
-        Document document =
-                documentRepository
-                        .findById(documentId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Document not found: "
-                                                + documentId
-                                )
-                        );
+        User currentUser =
+                currentUserService.getCurrentUser();
 
-        document.setStatus(status);
-
-        documentRepository.save(document);
-
+        return documentRepository
+                .findByIdAndOwner(
+                        documentId,
+                        currentUser
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Document not found with id: "
+                                        + documentId
+                        )
+                );
     }
 
     private ReviewResponse map(
@@ -178,17 +169,10 @@ public class DocumentReviewServiceImpl
     ) {
 
         return new ReviewResponse(
-
                 review.getId(),
-
                 review.getDocument().getId(),
-
                 review.getStatus(),
-
                 review.getReviewerComments()
-
         );
-
     }
-
 }

@@ -2,6 +2,7 @@ package com.accordiq.document.repository;
 
 import com.accordiq.document.entity.Document;
 import com.accordiq.document.enums.DocumentStatus;
+import com.accordiq.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -12,41 +13,60 @@ import java.util.UUID;
 public interface DocumentRepository
         extends JpaRepository<Document, UUID> {
 
-    List<Document> findAllByOrderByCreatedAtDesc();
+    List<Document>
+    findAllByOwnerOrderByCreatedAtDesc(
+            User owner
+    );
 
     List<Document>
-    findByOriginalFileNameContainingIgnoreCaseOrderByCreatedAtDesc(
+    findByOwnerAndOriginalFileNameContainingIgnoreCaseOrderByCreatedAtDesc(
+            User owner,
             String keyword
     );
 
     List<Document>
-    findByStatusOrderByCreatedAtDesc(
+    findByOwnerAndStatusOrderByCreatedAtDesc(
+            User owner,
             DocumentStatus status
     );
 
     List<Document>
-    findByOriginalFileNameContainingIgnoreCaseAndStatusOrderByCreatedAtDesc(
+    findByOwnerAndOriginalFileNameContainingIgnoreCaseAndStatusOrderByCreatedAtDesc(
+            User owner,
             String keyword,
             DocumentStatus status
+    );
+
+    java.util.Optional<Document>
+    findByIdAndOwner(
+            UUID id,
+            User owner
     );
 
     /*
      * Dashboard Analytics
      */
 
-    long countByStatus(DocumentStatus status);
+    long countByOwner(
+            User owner
+    );
 
-    @Query("""
-            SELECT COUNT(d)
-            FROM Document d
-            WHERE d.createdAt >= :start
-            """)
-    long countUploadedSince(LocalDateTime start);
+    long countByOwnerAndStatus(
+            User owner,
+            DocumentStatus status
+    );
+
+    long countByOwnerAndCreatedAtGreaterThanEqual(
+            User owner,
+            LocalDateTime start
+    );
 
     /*
      * Dashboard Recent Documents
      */
 
-    List<Document> findTop10ByOrderByCreatedAtDesc();
-
+    List<Document>
+    findTop10ByOwnerOrderByCreatedAtDesc(
+            User owner
+    );
 }

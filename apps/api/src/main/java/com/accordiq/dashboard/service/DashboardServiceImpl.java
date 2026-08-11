@@ -5,6 +5,8 @@ import com.accordiq.dashboard.dto.response.RecentDocumentResponse;
 import com.accordiq.document.entity.Document;
 import com.accordiq.document.enums.DocumentStatus;
 import com.accordiq.document.repository.DocumentRepository;
+import com.accordiq.security.util.CurrentUserService;
+import com.accordiq.user.entity.User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,68 +17,80 @@ public class DashboardServiceImpl
         implements DashboardService {
 
     private final DocumentRepository documentRepository;
+    private final CurrentUserService currentUserService;
 
     public DashboardServiceImpl(
-            DocumentRepository documentRepository
+            DocumentRepository documentRepository,
+            CurrentUserService currentUserService
     ) {
         this.documentRepository = documentRepository;
+        this.currentUserService = currentUserService;
     }
 
     @Override
     public DashboardStatsResponse getStatistics() {
 
-        long totalDocuments =
-                documentRepository.count();
+        User currentUser =
+                currentUserService.getCurrentUser();
 
-        long uploadedToday =
-                documentRepository.countUploadedSince(
-                        LocalDateTime.now()
-                                .toLocalDate()
-                                .atStartOfDay()
+        long totalDocuments =
+                documentRepository.countByOwner(
+                        currentUser
                 );
 
+        long uploadedToday =
+                documentRepository
+                        .countByOwnerAndCreatedAtGreaterThanEqual(
+                                currentUser,
+                                LocalDateTime.now()
+                                        .toLocalDate()
+                                        .atStartOfDay()
+                        );
+
         long processing =
-                documentRepository.countByStatus(
+                documentRepository.countByOwnerAndStatus(
+                        currentUser,
                         DocumentStatus.PROCESSING
                 );
 
         long completed =
-                documentRepository.countByStatus(
+                documentRepository.countByOwnerAndStatus(
+                        currentUser,
                         DocumentStatus.COMPLETED
                 );
 
         long reviewRequired =
-                documentRepository.countByStatus(
+                documentRepository.countByOwnerAndStatus(
+                        currentUser,
                         DocumentStatus.REVIEW_REQUIRED
                 );
 
         long failed =
-                documentRepository.countByStatus(
+                documentRepository.countByOwnerAndStatus(
+                        currentUser,
                         DocumentStatus.FAILED
                 );
 
         return new DashboardStatsResponse(
-
                 totalDocuments,
-
                 uploadedToday,
-
                 processing,
-
                 completed,
-
                 reviewRequired,
-
                 failed
-
         );
     }
 
     @Override
     public List<RecentDocumentResponse> getRecentDocuments() {
 
+        User currentUser =
+                currentUserService.getCurrentUser();
+
         return documentRepository
-                .findTop10ByOrderByCreatedAtDesc()
+                .findTop10ByOwnerOrderByCreatedAtDesc(
+                        currentUser
+                )
                 .stream()
                 .map(this::mapRecentDocument)
                 .toList();
@@ -87,18 +101,11 @@ public class DashboardServiceImpl
     ) {
 
         return new RecentDocumentResponse(
-
                 document.getId(),
-
                 document.getOriginalFileName(),
-
                 document.getStatus(),
-
                 document.getFileSize(),
-
                 document.getCreatedAt()
-
         );
     }
-
 }
