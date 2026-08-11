@@ -1,25 +1,22 @@
-# syntax=docker/dockerfile:1
-
 # ============================================================
 # Stage 1 — Build Spring Boot application
 # ============================================================
 FROM maven:3.9.9-eclipse-temurin-21 AS app-builder
 
-WORKDIR /workspace/apps/api
+WORKDIR /workspace
 
-COPY apps/api/pom.xml .
-COPY apps/api/mvnw .
-COPY apps/api/.mvn ./.mvn
+COPY pom.xml .
+COPY mvnw .
+COPY .mvn ./.mvn
 
 RUN chmod +x mvnw
 
 RUN ./mvnw dependency:go-offline -B
 
-COPY apps/api/src ./src
+COPY src ./src
 
 RUN ./mvnw clean package -DskipTests -B \
-    && ls -lah target \
-    && find target -maxdepth 1 -type f -name "*.jar" -print
+    && ls -lah target
 
 
 # ============================================================
@@ -76,7 +73,6 @@ RUN curl -fsSL \
 FROM eclipse-temurin:21-jre-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
-
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata
 
 RUN apt-get update \
@@ -85,7 +81,6 @@ RUN apt-get update \
         tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the compatible Leptonica shared library.
 COPY --from=leptonica-builder \
     /usr/local/lib/libleptonica.so* \
     /usr/local/lib/
@@ -98,7 +93,7 @@ RUN printf '%s\n' '/usr/local/lib' \
 WORKDIR /app
 
 COPY --from=app-builder \
-    /workspace/apps/api/target/*.jar \
+    /workspace/target/*.jar \
     /app/accordiq-api.jar
 
 EXPOSE 10000
