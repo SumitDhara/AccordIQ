@@ -42,13 +42,9 @@ public class TesseractOCRService implements OCRService {
             String text;
 
             if (name.endsWith(".pdf")) {
-
                 text = extractPdf(filePath);
-
             } else {
-
                 text = extractImage(filePath);
-
             }
 
             return OCRResult.builder()
@@ -68,19 +64,6 @@ public class TesseractOCRService implements OCRService {
         }
     }
 
-    private String extractImage(Path imagePath)
-            throws IOException, TesseractException {
-
-        BufferedImage image =
-                ImageIO.read(imagePath.toFile());
-
-        if (image == null) {
-            throw new OCRException("Unsupported image.");
-        }
-
-        return tesseract.doOCR(image);
-    }
-
     private String extractPdf(Path pdfPath)
             throws IOException, TesseractException {
 
@@ -97,17 +80,43 @@ public class TesseractOCRService implements OCRService {
                  i++) {
 
                 BufferedImage image =
-                        renderer.renderImageWithDPI(i, 300);
+                        renderer.renderImageWithDPI(i, 150);
 
-                builder.append(
-                        tesseract.doOCR(image)
-                );
+                try {
 
-                builder.append(System.lineSeparator());
+                    builder.append(
+                            tesseract.doOCR(image)
+                    );
+
+                    builder.append(
+                            System.lineSeparator()
+                    );
+
+                } finally {
+
+                    image.flush();
+                }
             }
-
         }
 
         return builder.toString();
+    }
+
+    private String extractImage(Path imagePath)
+            throws IOException, TesseractException {
+
+        BufferedImage image =
+                ImageIO.read(imagePath.toFile());
+
+        if (image == null) {
+            throw new OCRException("Unsupported image.");
+        }
+
+        try {
+            return tesseract.doOCR(image);
+
+        } finally {
+            image.flush();
+        }
     }
 }
