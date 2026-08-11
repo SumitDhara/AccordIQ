@@ -23,13 +23,14 @@ FROM eclipse-temurin:21-jre-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Build and install Leptonica 1.85.0.
 # Tess4J 5.16.0 / Lept4J 1.21.1 requires
-# Leptonica >= 1.84 for pixDisplayDiff().
+# a newer Leptonica API than Ubuntu 22.04 provides.
+#
+# Build Leptonica 1.85.0 from source.
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
-        cmake \
         git \
         pkg-config \
         autoconf \
@@ -45,15 +46,16 @@ RUN apt-get update \
         https://github.com/DanBloomberg/leptonica.git \
         /tmp/leptonica \
     && cd /tmp/leptonica \
-    && ./autobuild \
     && ./configure \
+        --prefix=/usr/local \
+        --disable-programs \
+        --disable-doc \
     && make -j2 \
     && make install \
     && ldconfig \
     && rm -rf /tmp/leptonica \
     && apt-get remove -y \
         build-essential \
-        cmake \
         git \
         pkg-config \
         autoconf \
