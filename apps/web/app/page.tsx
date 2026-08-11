@@ -1,5 +1,5 @@
-import AnalyzeWorkspace from "@/components/analyze/AnalyzeWorkspace";
+import { Hero } from "@/components/landing/hero";
 
-export default function AnalyzePage() {
-  return <AnalyzeWorkspace />;
+export default function HomePage() {
+  return <Hero />;
 }

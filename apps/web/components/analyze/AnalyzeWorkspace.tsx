@@ -41,7 +41,7 @@ export default function AnalyzeWorkspace() {
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
             Upload a document or paste text to extract summaries,
-            insights and structured information using OCR and Gemini AI.
+            insights and structured information using OCR and intelligent extraction.
           </p>
 
         </div>
