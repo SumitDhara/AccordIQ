@@ -49,6 +49,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",
                                 "/api/v1/ai/**",
                                 "/api/v1/analyze/**",
+                                "/api/v1/document-analyses/**",
+                                "/api/v1/reviews/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -76,8 +78,6 @@ public class SecurityConfig {
                          * - document details
                          * - document deletion
                          * - document search
-                         * - reviews
-                         * - saved analysis
                          */
                         .requestMatchers(
                                 "/api/v1/documents/**"
