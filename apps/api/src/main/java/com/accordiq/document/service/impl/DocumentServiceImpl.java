@@ -11,6 +11,10 @@ import com.accordiq.document.enums.DocumentStatus;
 import com.accordiq.document.processing.DocumentProcessingService;
 import com.accordiq.document.repository.DocumentRepository;
 import com.accordiq.document.service.DocumentService;
+import com.accordiq.documentanalysis.entity.DocumentAnalysis;
+import com.accordiq.documentanalysis.repository.DocumentAnalysisRepository;
+import com.accordiq.documentfield.entity.DocumentField;
+import com.accordiq.documentfield.repository.DocumentFieldRepository;
 import com.accordiq.security.util.CurrentUserService;
 import com.accordiq.storage.service.FileStorageService;
 import com.accordiq.user.entity.User;
@@ -33,17 +37,25 @@ public class DocumentServiceImpl implements DocumentService {
     private final FileStorageService fileStorageService;
     private final DocumentProcessingService documentProcessingService;
     private final CurrentUserService currentUserService;
+    private final DocumentAnalysisRepository documentAnalysisRepository;
+    private final DocumentFieldRepository documentFieldRepository;
 
     public DocumentServiceImpl(
             DocumentRepository documentRepository,
             FileStorageService fileStorageService,
             DocumentProcessingService documentProcessingService,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            DocumentAnalysisRepository documentAnalysisRepository,
+            DocumentFieldRepository documentFieldRepository
     ) {
         this.documentRepository = documentRepository;
         this.fileStorageService = fileStorageService;
         this.documentProcessingService = documentProcessingService;
         this.currentUserService = currentUserService;
+        this.documentAnalysisRepository =
+                documentAnalysisRepository;
+        this.documentFieldRepository =
+                documentFieldRepository;
     }
 
     @Override
@@ -51,17 +63,27 @@ public class DocumentServiceImpl implements DocumentService {
             MultipartFile file
     ) throws IOException {
 
-        User currentUser =
-                currentUserService.getCurrentUser();
-
         /*
-         * Store the uploaded file temporarily.
+         * Analysis is intentionally available to both
+         * anonymous and authenticated users.
          *
-         * The physical file is removed in the finally block
-         * after OCR/AI processing completes.
+         * Anonymous users receive the analysis result but
+         * their generated database records are removed after
+         * processing.
+         *
+         * Authenticated users retain the document and its
+         * structured analysis.
          */
+        User currentUser =
+                currentUserService.getCurrentUserOrNull();
+
+        boolean anonymous =
+                currentUser == null;
+
         String storedFileName =
                 fileStorageService.store(file);
+
+        Document savedDocument = null;
 
         try {
 
@@ -88,7 +110,7 @@ public class DocumentServiceImpl implements DocumentService {
                             .owner(currentUser)
                             .build();
 
-            Document savedDocument =
+            savedDocument =
                     documentRepository.save(document);
 
             try {
@@ -129,6 +151,19 @@ public class DocumentServiceImpl implements DocumentService {
         } finally {
 
             /*
+             * Anonymous analyses are temporary.
+             *
+             * Delete database records created during processing
+             * before removing the physical upload.
+             */
+            if (anonymous && savedDocument != null) {
+
+                cleanupAnonymousDocument(
+                        savedDocument.getId()
+                );
+            }
+
+            /*
              * Uploaded files are temporary processing artifacts.
              *
              * They are removed whether processing succeeds
@@ -153,6 +188,69 @@ public class DocumentServiceImpl implements DocumentService {
                         cleanupException
                 );
             }
+        }
+    }
+
+    /**
+     * Removes all persistent records generated for an
+     * anonymous analysis.
+     *
+     * Deletion order is important because DocumentField
+     * references DocumentAnalysis and DocumentAnalysis
+     * references Document.
+     */
+    private void cleanupAnonymousDocument(
+            UUID documentId
+    ) {
+
+        try {
+
+            DocumentAnalysis analysis =
+                    documentAnalysisRepository
+                            .findByDocumentId(documentId)
+                            .orElse(null);
+
+            if (analysis != null) {
+
+                List<DocumentField> fields =
+                        documentFieldRepository
+                                .findByAnalysisId(
+                                        analysis.getId()
+                                );
+
+                if (!fields.isEmpty()) {
+
+                    documentFieldRepository.deleteAll(
+                            fields
+                    );
+                }
+
+                documentAnalysisRepository.delete(
+                        analysis
+                );
+            }
+
+            documentRepository.deleteById(
+                    documentId
+            );
+
+            LOGGER.info(
+                    "Anonymous analysis records removed for document: {}",
+                    documentId
+            );
+
+        } catch (RuntimeException exception) {
+
+            /*
+             * The analysis result has already been produced.
+             * Log cleanup failure rather than hiding the
+             * successful analysis response from the user.
+             */
+            LOGGER.error(
+                    "Failed to clean up anonymous analysis records for document: {}",
+                    documentId,
+                    exception
+            );
         }
     }
 
