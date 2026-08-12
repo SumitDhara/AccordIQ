@@ -1,14 +1,11 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   AlertTriangle,
   CheckCircle2,
   Download,
   FileSearch,
   Lightbulb,
-  ClipboardCheck,
 } from "lucide-react";
 
 import {
@@ -35,11 +32,11 @@ export default function AnalysisResult({
     return null;
   }
 
-  const canReview =
+  const canExport =
     Boolean(result.documentId) &&
     Boolean(result.fields);
 
-  const exportDocument = canReview
+  const exportDocument = canExport
     ? {
         id: result.documentId!,
         fileName:
@@ -58,7 +55,7 @@ export default function AnalysisResult({
 
   return (
     <div className="space-y-6">
-      {canReview && exportDocument && (
+      {canExport && exportDocument && (
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
             <div>
@@ -67,26 +64,11 @@ export default function AnalysisResult({
               </p>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Review the extracted information or
-                export the analysis.
+                Export the analysis for your records.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button variant="default">
-                <Link
-                  href={`/review?documentId=${encodeURIComponent(
-                    result.documentId!
-                  )}&documentName=${encodeURIComponent(
-                    result.fileName ?? "Document"
-                  )}`}
-                  className="inline-flex items-center"
-                >
-                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                  Review Document
-                </Link>
-              </Button>
-
               <Button
                 type="button"
                 variant="outline"
