@@ -15,9 +15,12 @@ import com.accordiq.documentanalysis.entity.DocumentAnalysis;
 import com.accordiq.documentanalysis.repository.DocumentAnalysisRepository;
 import com.accordiq.documentfield.entity.DocumentField;
 import com.accordiq.documentfield.repository.DocumentFieldRepository;
+import com.accordiq.review.entity.DocumentReview;
+import com.accordiq.review.repository.DocumentReviewRepository;
 import com.accordiq.security.util.CurrentUserService;
 import com.accordiq.storage.service.FileStorageService;
 import com.accordiq.user.entity.User;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final CurrentUserService currentUserService;
     private final DocumentAnalysisRepository documentAnalysisRepository;
     private final DocumentFieldRepository documentFieldRepository;
+    private final DocumentReviewRepository documentReviewRepository;
 
     public DocumentServiceImpl(
             DocumentRepository documentRepository,
@@ -46,16 +50,16 @@ public class DocumentServiceImpl implements DocumentService {
             DocumentProcessingService documentProcessingService,
             CurrentUserService currentUserService,
             DocumentAnalysisRepository documentAnalysisRepository,
-            DocumentFieldRepository documentFieldRepository
+            DocumentFieldRepository documentFieldRepository,
+            DocumentReviewRepository documentReviewRepository
     ) {
         this.documentRepository = documentRepository;
         this.fileStorageService = fileStorageService;
         this.documentProcessingService = documentProcessingService;
         this.currentUserService = currentUserService;
-        this.documentAnalysisRepository =
-                documentAnalysisRepository;
-        this.documentFieldRepository =
-                documentFieldRepository;
+        this.documentAnalysisRepository = documentAnalysisRepository;
+        this.documentFieldRepository = documentFieldRepository;
+        this.documentReviewRepository = documentReviewRepository;
     }
 
     @Override
@@ -63,17 +67,6 @@ public class DocumentServiceImpl implements DocumentService {
             MultipartFile file
     ) throws IOException {
 
-        /*
-         * Analysis is intentionally available to both
-         * anonymous and authenticated users.
-         *
-         * Anonymous users receive the analysis result but
-         * their generated database records are removed after
-         * processing.
-         *
-         * Authenticated users retain the document and its
-         * structured analysis.
-         */
         User currentUser =
                 currentUserService.getCurrentUserOrNull();
 
@@ -150,12 +143,6 @@ public class DocumentServiceImpl implements DocumentService {
 
         } finally {
 
-            /*
-             * Anonymous analyses are temporary.
-             *
-             * Delete database records created during processing
-             * before removing the physical upload.
-             */
             if (anonymous && savedDocument != null) {
 
                 cleanupAnonymousDocument(
@@ -163,12 +150,6 @@ public class DocumentServiceImpl implements DocumentService {
                 );
             }
 
-            /*
-             * Uploaded files are temporary processing artifacts.
-             *
-             * They are removed whether processing succeeds
-             * or fails.
-             */
             try {
 
                 fileStorageService.delete(
@@ -191,14 +172,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
-    /**
-     * Removes all persistent records generated for an
-     * anonymous analysis.
-     *
-     * Deletion order is important because DocumentField
-     * references DocumentAnalysis and DocumentAnalysis
-     * references Document.
-     */
+    @Transactional
     private void cleanupAnonymousDocument(
             UUID documentId
     ) {
@@ -223,16 +197,36 @@ public class DocumentServiceImpl implements DocumentService {
                     documentFieldRepository.deleteAll(
                             fields
                     );
+
+                    documentFieldRepository.flush();
                 }
 
                 documentAnalysisRepository.delete(
                         analysis
                 );
+
+                documentAnalysisRepository.flush();
+            }
+
+            DocumentReview review =
+                    documentReviewRepository
+                            .findByDocumentId(documentId)
+                            .orElse(null);
+
+            if (review != null) {
+
+                documentReviewRepository.delete(
+                        review
+                );
+
+                documentReviewRepository.flush();
             }
 
             documentRepository.deleteById(
                     documentId
             );
+
+            documentRepository.flush();
 
             LOGGER.info(
                     "Anonymous analysis records removed for document: {}",
@@ -241,11 +235,6 @@ public class DocumentServiceImpl implements DocumentService {
 
         } catch (RuntimeException exception) {
 
-            /*
-             * The analysis result has already been produced.
-             * Log cleanup failure rather than hiding the
-             * successful analysis response from the user.
-             */
             LOGGER.error(
                     "Failed to clean up anonymous analysis records for document: {}",
                     documentId,
@@ -294,6 +283,7 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    @Transactional
     public void deleteDocument(
             UUID id
     ) {
@@ -314,29 +304,88 @@ public class DocumentServiceImpl implements DocumentService {
                                 )
                         );
 
+        /*
+         * Delete dependent database records first.
+         */
+
+        DocumentAnalysis analysis =
+                documentAnalysisRepository
+                        .findByDocumentId(id)
+                        .orElse(null);
+
+        if (analysis != null) {
+
+            List<DocumentField> fields =
+                    documentFieldRepository
+                            .findByAnalysisId(
+                                    analysis.getId()
+                            );
+
+            if (!fields.isEmpty()) {
+
+                documentFieldRepository.deleteAll(
+                        fields
+                );
+
+                documentFieldRepository.flush();
+            }
+
+            documentAnalysisRepository.delete(
+                    analysis
+            );
+
+            documentAnalysisRepository.flush();
+        }
+
+        /*
+         * Delete review before deleting the document.
+         */
+        DocumentReview review =
+                documentReviewRepository
+                        .findByDocumentId(id)
+                        .orElse(null);
+
+        if (review != null) {
+
+            documentReviewRepository.delete(
+                    review
+            );
+
+            documentReviewRepository.flush();
+        }
+
+        /*
+         * Delete the document itself.
+         */
+        documentRepository.delete(
+                document
+        );
+
+        documentRepository.flush();
+
+        /*
+         * Delete the physical file after the database
+         * deletion succeeds.
+         */
         try {
 
-            /*
-             * Storage concerns remain inside
-             * FileStorageService.
-             *
-             * The file may already have been removed after
-             * processing, so delete() safely handles a
-             * missing file.
-             */
             fileStorageService.delete(
                     document.getStoredFileName()
             );
 
         } catch (IOException exception) {
 
-            throw new RuntimeException(
-                    "Failed to delete document from storage.",
+            LOGGER.warn(
+                    "Document deleted from database but physical file could not be removed: {}",
+                    document.getStoredFileName(),
                     exception
             );
         }
 
-        documentRepository.delete(document);
+        LOGGER.info(
+                "Document and dependent records deleted: {}",
+                id
+        );
     }
 
     @Override
