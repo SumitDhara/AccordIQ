@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 import { DocumentEmptyState } from "@/components/documents/DocumentEmptyState";
 import { DocumentFilters } from "@/components/documents/DocumentFilters";
@@ -48,37 +49,64 @@ export default function DocumentsPage() {
   return (
     <main className="mx-auto max-w-7xl space-y-8 px-6 py-10">
 
-      <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-            Documents
-          </h1>
-
-          <p className="mt-2 text-gray-500">
-            Manage, review and search all uploaded documents.
-          </p>
-        </div>
-
+      <div>
         <Link
-          href="/upload"
+          href="/dashboard"
           className="
+            mb-6
             inline-flex
             items-center
-            justify-center
+            gap-2
             rounded-xl
-            bg-gray-900
-            px-6
-            py-3
-            font-medium
-            text-white
+            border
+            border-gray-200
+            bg-white
+            px-4
+            py-2.5
+            text-sm
+            font-semibold
+            text-gray-900
+            shadow-sm
             transition
-            hover:bg-black
+            hover:bg-gray-50
           "
         >
-          Upload Document
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
         </Link>
 
+        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
+
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+              Documents
+            </h1>
+
+            <p className="mt-2 text-gray-500">
+              Manage, review and search all uploaded documents.
+            </p>
+          </div>
+
+          <Link
+            href="/upload"
+            className="
+              inline-flex
+              items-center
+              justify-center
+              rounded-xl
+              bg-gray-900
+              px-6
+              py-3
+              font-medium
+              text-white
+              transition
+              hover:bg-black
+            "
+          >
+            Upload Document
+          </Link>
+
+        </div>
       </div>
 
       <DocumentStats
