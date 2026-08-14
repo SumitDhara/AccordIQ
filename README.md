@@ -12,8 +12,6 @@
 
 <p>
   <a href="https://accord-iq-delta.vercel.app">Live Application</a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/sumitdhara609/AccordIQ">GitHub Repository</a>
 </p>
 
 <p>
@@ -68,6 +66,12 @@ AccordIQ separates **understanding a document** from **storing a document**.
 | Keep an analysis outside the application | **Export the result as JSON or CSV** |
 
 This keeps the first interaction lightweight while still providing a persistent workspace for people who need one.
+
+### ✦ The AccordIQ promise
+
+**Analyse first. Account later. Store only when it matters.**
+
+The product is designed around a simple user question: *“I have a document. Can you help me understand it?”* AccordIQ aims to answer that question before introducing unnecessary friction.
 
 ---
 
@@ -295,6 +299,18 @@ This gives the platform a foundation for treating a document as a continuing pie
 
 ---
 
+## 🎯 Designed around the user
+
+AccordIQ is not built around the assumption that every visitor wants another dashboard, another account and another workflow to learn.
+
+It is built around the document.
+
+**If you need an answer, get the answer. If you need a workspace, create one.**
+
+That distinction keeps the first interaction lightweight while giving returning users the structure they need to manage documents over time.
+
+---
+
 ## 🧩 Technology stack
 
 | Layer | Technology |
@@ -310,9 +326,9 @@ This gives the platform a foundation for treating a document as a continuing pie
 | Build | Maven |
 | Deployment | Vercel |
 
-Gemini is used as part of the intelligence layer; it is not the product itself.
+Gemini AI powers a core part of the intelligence layer, helping AccordIQ move from extracted content toward useful, structured understanding.
 
-The product is the workflow around the intelligence.
+The important distinction is simple: **Gemini is a component inside AccordIQ. The product is the workflow built around that intelligence.**
 
 ---
 
@@ -473,36 +489,7 @@ Configure database, authentication and AI-related values through your local envi
 
 **[Launch the live application →](https://accord-iq-delta.vercel.app)**
 
-**[Explore the repository →](https://github.com/sumitdhara609/AccordIQ)**
-
 </div>
-
----
-
-## 📸 Product snapshots
-
-The repository keeps the actual product screenshots under:
-
-```text
-assets/screenshots/
-```
-
-```text
-01-landing-light.png
-02-landing-dark.png
-03-document-upload.png
-04-create-account.png
-05-sign-in.png
-06-dashboard.png
-07-dashboard-quick-actions.png
-08-document-analysis-processing.png
-09-document-analysis-result.png
-10-risks-recommendations.png
-11-documents-management.png
-12-document-detail-analysis.png
-```
-
-These are product captures, not marketing mockups.
 
 ---
 
@@ -539,22 +526,30 @@ For a bug, improvement or feature proposal:
 
 AccordIQ is released under the **MIT License**.
 
-See [`LICENSE`](LICENSE) for the complete license text.
+See the [MIT License](https://github.com/sumitdhara609/AccordIQ?tab=MIT-1-ov-file) for the complete license text.
 
 ---
 
 <div align="center">
 
-## Built with precision. Designed with simplicity.
+<div align="center">
 
-**by Sumit Dhara**
+Built with precision. Designed with simplicity.
 
-*AccordIQ · Document Intelligence*
+by Sumit Dhara
+
+AccordIQ · Document Intelligence
 
 <br />
 
 <a href="https://accord-iq-delta.vercel.app">Live Application</a>
-&nbsp;·&nbsp;
-<a href="https://github.com/sumitdhara609/AccordIQ">GitHub Repository</a>
+ · 
+<a href="https://www.linkedin.com/in/sumit-dhara609/">LinkedIn</a>
+ · 
+<a href="https://github.com/sumitdhara609/AccordIQ?tab=MIT-1-ov-file">MIT License</a>
+
+<br /><br />
+
+Built as a long-term flagship project — one document workflow at a time.
 
 </div>
