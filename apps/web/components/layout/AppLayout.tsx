@@ -20,7 +20,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             Built with precision. Design with simplicity.
           </p>
 
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-xs font-medium tracking-[0.08em] text-foreground/70">
             Sumit Dhara
           </p>
 
