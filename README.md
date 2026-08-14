@@ -532,24 +532,61 @@ See the [MIT License](https://github.com/sumitdhara609/AccordIQ?tab=MIT-1-ov-fil
 
 <div align="center">
 
-<div align="center">
-
-Built with precision. Designed with simplicity.
-
-by Sumit Dhara
-
-AccordIQ · Document Intelligence
+### Built with precision. Designed with simplicity.
 
 <br />
 
-<a href="https://accord-iq-delta.vercel.app">Live Application</a>
- · 
-<a href="https://www.linkedin.com/in/sumit-dhara609/">LinkedIn</a>
- · 
-<a href="https://github.com/sumitdhara609/AccordIQ?tab=MIT-1-ov-file">MIT License</a>
+**AccordIQ** is not built to make document intelligence look complicated.
 
-<br /><br />
+It is built to make the **result feel effortless.**
 
-Built as a long-term flagship project — one document workflow at a time.
+<br />
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Designed & Developed by</strong><br />
+      <a href="https://www.linkedin.com/in/sumit-dhara609/">
+        <strong>Sumit Dhara</strong>
+      </a>
+    </td>
+    <td align="center">
+      <strong>Product</strong><br />
+      AccordIQ · Document Intelligence
+    </td>
+    <td align="center">
+      <strong>License</strong><br />
+      <a href="https://github.com/sumitdhara609/AccordIQ?tab=MIT-1-ov-file">
+        MIT License
+      </a>
+    </td>
+  </tr>
+</table>
+
+<br />
+
+<a href="https://accord-iq-delta.vercel.app">
+  <img src="https://img.shields.io/badge/OPEN_ACCORDIQ-111827?style=for-the-badge&logoColor=white" alt="Open AccordIQ" />
+</a>
+&nbsp;
+<a href="https://www.linkedin.com/in/sumit-dhara609/">
+  <img src="https://img.shields.io/badge/CONNECT_WITH_THE_DEVELOPER-2563EB?style=for-the-badge&logo=linkedin&logoColor=white" alt="Connect with Sumit Dhara" />
+</a>
+
+<br />
+<br />
+
+<sub>
+A long-term flagship project — built one document workflow at a time.
+</sub>
+
+<br />
+
+<sub>
+<strong>Understand.</strong> &nbsp;·&nbsp;
+<strong>Structure.</strong> &nbsp;·&nbsp;
+<strong>Review.</strong> &nbsp;·&nbsp;
+<strong>Act.</strong>
+</sub>
 
 </div>
