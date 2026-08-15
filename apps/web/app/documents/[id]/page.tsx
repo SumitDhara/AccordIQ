@@ -320,60 +320,6 @@ export default function DocumentDetailsPage() {
                 </p>
               </div>
 
-              {/* Fields */}
-              <div>
-                <div className="flex items-center justify-between gap-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    Extracted Fields
-                  </p>
-
-                  <span className="text-xs text-gray-400">
-                    {analysis.fields.length}{" "}
-                    {analysis.fields.length === 1
-                      ? "field"
-                      : "fields"}
-                  </span>
-                </div>
-
-                {analysis.fields.length === 0 ? (
-                  <div className="mt-3 rounded-xl bg-gray-50 p-5">
-                    <p className="text-sm text-gray-500">
-                      No structured fields were
-                      extracted.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-200">
-                    {analysis.fields.map(
-                      (field) => (
-                        <div
-                          key={field.id}
-                          className="grid gap-3 p-4 md:grid-cols-[1fr_2fr_auto] md:items-center"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-gray-500">
-                              {field.name}
-                            </p>
-                          </div>
-
-                          <p className="break-words text-sm font-medium text-gray-900">
-                            {field.value ||
-                              "—"}
-                          </p>
-
-                          <div className="text-sm text-gray-500 md:text-right">
-                            {field.confidence ==
-                            null
-                              ? "—"
-                              : `${field.confidence}%`}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
-
               {/* Overall confidence */}
               {analysis.confidence != null && (
                 <div>
@@ -388,35 +334,6 @@ export default function DocumentDetailsPage() {
               )}
             </div>
           )}
-        </section>
-
-        {/* Workflow */}
-        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Continue Workflow
-          </h2>
-
-          <p className="mt-2 text-sm leading-6 text-gray-500">
-            Continue processing this document
-            through AccordIQ's analysis and
-            review workflow.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/analyze"
-              className="inline-flex rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
-            >
-              Analyze Document
-            </Link>
-
-            <Link
-              href="/review"
-              className="inline-flex rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
-            >
-              Review Documents
-            </Link>
-          </div>
         </section>
       </div>
     </main>

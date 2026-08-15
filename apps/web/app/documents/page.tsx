@@ -48,7 +48,6 @@ export default function DocumentsPage() {
 
   return (
     <main className="mx-auto max-w-7xl space-y-8 px-6 py-10">
-
       <div>
         <Link
           href="/dashboard"
@@ -76,7 +75,6 @@ export default function DocumentsPage() {
         </Link>
 
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-gray-900">
               Documents
@@ -88,7 +86,7 @@ export default function DocumentsPage() {
           </div>
 
           <Link
-            href="/upload"
+            href="/analyze"
             className="
               inline-flex
               items-center
@@ -105,7 +103,6 @@ export default function DocumentsPage() {
           >
             Upload Document
           </Link>
-
         </div>
       </div>
 
@@ -127,7 +124,6 @@ export default function DocumentsPage() {
           documents={documents}
         />
       )}
-
     </main>
   );
 }
