@@ -36,7 +36,7 @@
 
 ---
 
-## The idea
+## The Idea
 
 Documents are full of information.
 
