@@ -509,6 +509,18 @@ It is to build the foundation correctly enough that the next idea has somewhere 
 
 ---
 
+## Development Workflow
+
+AccordIQ follows a modular development workflow designed to keep
+document ingestion, analysis, validation, review, and export
+responsibilities clearly separated.
+
+Changes are introduced through focused branches and pull requests,
+allowing individual parts of the platform to evolve independently
+while preserving the stability of the development branch.
+
+---
+
 ## 🤝 Contributing
 
 AccordIQ is an evolving project and thoughtful technical feedback is welcome.
