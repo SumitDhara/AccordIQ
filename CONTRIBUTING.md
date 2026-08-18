@@ -19,3 +19,14 @@ Before opening a pull request:
 - Use a clear commit message.
 - Ensure relevant checks pass.
 - Provide enough context for the change to be reviewed.
+
+## Issue Reporting
+
+When reporting an issue, provide enough context to make the problem reproducible.
+
+Include:
+
+- A clear description of the problem.
+- The expected and actual behaviour.
+- Relevant steps to reproduce the issue.
+- Environment details when they may affect the result.
