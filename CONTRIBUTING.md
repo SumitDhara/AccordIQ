@@ -30,3 +30,7 @@ Include:
 - The expected and actual behaviour.
 - Relevant steps to reproduce the issue.
 - Environment details when they may affect the result.
+
+## Issue Reports
+
+When reporting an issue, please provide a clear description, steps to reproduce the problem, expected behaviour, actual behaviour, and relevant environment details when applicable.
